@@ -84,15 +84,6 @@ This project is released under the **MIT License**. See [LICENSE](LICENSE) for d
 
 ---
 
-## 🧩 Optional Enhancements
-
-* Add additional bloatware removal options
-* Add more performance tweaks or privacy optimizations
-* Host your script online for single-command execution
-* Add automatic updates for the script
-
----
-
 ## ❤️ Support / Links
 
 * GitHub: [https://github.com/kaczza/Windows-Debloater](https://github.com/yourusername/WindowsDebloater)
