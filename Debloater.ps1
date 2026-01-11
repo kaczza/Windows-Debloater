@@ -33,11 +33,6 @@ function Write-Log {
     $LogBox.ScrollToCaret()
 }
 
-# ---------- RESTORE POINT ----------
-function Create-RestorePoint {
-    Write-Log "Creating system restore point..."
-    Checkpoint-Computer -Description "Before Debloat" -RestorePointType MODIFY_SETTINGS
-}
 
 # ---------- BLOATWARE ----------
 $extraBloatware = @(
@@ -67,7 +62,6 @@ $extraBloatware = @(
     "Picsart-Photostudio",
     "RoyalRevolt",
     "Speed test",
-    "SpotifyAB.SpotifyMusic",
     "Twitter",
     "Wunderlist",
     "king.com.BubbleWitch3Saga",
@@ -129,29 +123,57 @@ function Disable-Ads {
 
 # ---------- PERFORMANCE POWER PLAN ----------
 function Set-PerformancePowerPlan {
-    Write-Log "Setting Performance-Optimized Power Plan..."
-
-    $planName = "Debloater Performance"
-    $existingPlan = (powercfg /list) -match $planName
-
-    if (-not $existingPlan) {
-        $guid = (powercfg -duplicatescheme SCHEME_MIN).Trim()
-        powercfg -changename $guid $planName
-        Write-Log "Created new performance plan: $planName"
+    Write-Log "Activating Performance Power Plan..."
+    $planName = "High performance"
+    $existing = powercfg /list | Select-String $planName
+    if ($existing) {
+        $guid = ($existing -replace ".*:\s+(\S+).*",'$1')
+        powercfg -setactive $guid
+        Write-Log "Activated power plan: $planName"
     } else {
-        $guid = ((powercfg /list) -match $planName) -replace ".*: (\S+).*", '$1'
-        Write-Log "Using existing plan: $planName"
+        Write-Log "Power plan '$planName' not found!"
+    }
+}
+
+function Clean-TempAndRecycleBin {
+    Write-Log "Cleaning system Temp folders and Recycle Bin..."
+
+    $systemTemp = "$env:windir\Temp\*"
+    try {
+        Get-ChildItem -Path $systemTemp -Recurse -Force -ErrorAction SilentlyContinue |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Log "System Temp folder cleaned."
+    } catch {
+        Write-Log "Failed to clean system Temp folder: $_"
+    }
+    $userTemp = "$env:TEMP\*"
+    try {
+        Get-ChildItem -Path $userTemp -Recurse -Force -ErrorAction SilentlyContinue |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Log "User Temp folder cleaned."
+    } catch {
+        Write-Log "Failed to clean user Temp folder: $_"
+    }
+    try {
+        $shell = New-Object -ComObject Shell.Application
+        $recycle = $shell.Namespace(0xA)
+        $items = @()
+        for ($i = 0; $i -lt $recycle.Items().Count; $i++) {
+            $items += $recycle.Items().Item($i)
+        }
+        foreach ($item in $items) {
+            $item.InvokeVerb("Delete")
+        }
+        Write-Log "Recycle Bin emptied."
+    } catch {
+        Write-Log "Failed to empty Recycle Bin: $_"
     }
 
-    powercfg -setactive $guid
-    powercfg -setacvalueindex $guid SUB_PROCESSOR PROCTHROTTLEMAX 100
-    powercfg -setdcvalueindex $guid SUB_PROCESSOR PROCTHROTTLEMAX 100
-    powercfg -setacvalueindex $guid SUB_VIDEO VIDEOANYSPEED 0
-    powercfg -setdcvalueindex $guid SUB_VIDEO VIDEOANYSPEED 0
-    powercfg -SetActive $guid
-
-    Write-Log "Performance power plan applied."
+    Write-Log "Temp cleanup completed."
 }
+
+
+
 
 # ---------- UI ----------
 $form = New-Object System.Windows.Forms.Form
@@ -204,8 +226,10 @@ $cbCoreIso   = StyledCheckbox "Disable Core Isolation / Memory Integrity" 135
 $cbPowerPlan = StyledCheckbox "Enable Performance-Optimized Power Plan" 165
 $cbTelemetry = StyledCheckbox "Disable Windows Telemetry & Feedback" 195
 $cbTips      = StyledCheckbox "Disable Windows Tips & Suggestions" 225
+$cbCleanTemp = StyledCheckbox "Clean Temp folders and Recycle Bin" 195
 
-$panel.Controls.AddRange(@($cbRestore,$cbBloat,$cbAds,$cbDefender,$cbCoreIso,$cbPowerPlan,$cbTelemetry,$cbTips))
+
+$panel.Controls.AddRange(@($cbRestore,$cbBloat,$cbAds,$cbDefender,$cbCoreIso,$cbPowerPlan,$cbTelemetry,$cbTips,$cbCleanTemp))
 
 # ---------- BUTTONS ----------
 function StyledButton($text, $x, $y) {
@@ -239,13 +263,11 @@ $LogBox.BorderStyle = "None"
 $btnRun.Add_Click({
     Write-Log "Starting process..."
 
-    if ($cbRestore.Checked) { Create-RestorePoint }
     if ($cbBloat.Checked)   { Remove-Bloatware }
     if ($cbAds.Checked)     { Disable-Ads }
 
     if ($cbDefender.Checked) {
         Write-Log "Disabling Windows Defender via registry..."
-        New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender" -Force | Out-Null
         New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender" -Name "DisableAntiSpyware" -Value 1 -PropertyType DWORD -Force
         New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender" -Name "DisableRealtimeMonitoring" -Value 1 -PropertyType DWORD -Force
     }
@@ -260,6 +282,11 @@ $btnRun.Add_Click({
     if ($cbPowerPlan.Checked) {
         Set-PerformancePowerPlan
     }
+
+    if ($cbCleanTemp.Checked) {
+     Clean-TempAndRecycleBin
+    }
+
 
     if ($cbTelemetry.Checked) {
         Write-Log "Disabling Windows Telemetry..."
