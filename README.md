@@ -28,8 +28,9 @@ A **user-friendly Windows debloater** with optional optimizations and privacy tw
 
 ## 📸 Screenshots
 
-![Screenshot 1](./screenshots/gui1.png)  
-![Screenshot 2](./screenshots/gui2.png)  
+<img width="820" height="700" alt="image" src="https://github.com/user-attachments/assets/62d780d5-f87a-49c3-8590-e26e35fd634d" />
+
+
 
 ---
 
