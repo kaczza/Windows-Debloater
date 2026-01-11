@@ -137,7 +137,6 @@ function Set-PerformancePowerPlan {
 
 function Clean-TempAndRecycleBin {
     Write-Log "Cleaning system Temp folders and Recycle Bin..."
-
     $systemTemp = "$env:windir\Temp\*"
     try {
         Get-ChildItem -Path $systemTemp -Recurse -Force -ErrorAction SilentlyContinue |
@@ -155,15 +154,7 @@ function Clean-TempAndRecycleBin {
         Write-Log "Failed to clean user Temp folder: $_"
     }
     try {
-        $shell = New-Object -ComObject Shell.Application
-        $recycle = $shell.Namespace(0xA)
-        $items = @()
-        for ($i = 0; $i -lt $recycle.Items().Count; $i++) {
-            $items += $recycle.Items().Item($i)
-        }
-        foreach ($item in $items) {
-            $item.InvokeVerb("Delete")
-        }
+        Clear-RecycleBin -Force -ErrorAction SilentlyContinue
         Write-Log "Recycle Bin emptied."
     } catch {
         Write-Log "Failed to empty Recycle Bin: $_"
@@ -171,6 +162,7 @@ function Clean-TempAndRecycleBin {
 
     Write-Log "Temp cleanup completed."
 }
+
 
 
 
@@ -332,3 +324,4 @@ $btnExit.Add_Click({ $form.Close() })
 $form.Controls.AddRange(@($header,$panel,$btnRun,$btnExit,$LogBox,$btnInfo))
 
 [void]$form.ShowDialog()
+
